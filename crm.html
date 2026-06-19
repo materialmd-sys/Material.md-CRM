@@ -232,30 +232,30 @@
   <div id="sidebar">
     <div class="sb-logo">
       <div class="sb-logo-text">Material.md</div>
-      <div class="sb-logo-sub">CRM · Общая база команды</div>
+      <div class="sb-logo-sub" id="sb-subtitle">CRM · Общая база команды</div>
     </div>
     <div class="sb-nav">
       <div class="sb-section">Главное</div>
       <div class="sb-item active" onclick="nav('dashboard')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Дашборд
+        <span id="nav-dashboard">Дашборд</span>
       </div>
       <div class="sb-item" onclick="nav('pipeline')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
-        Воронка
+        <span id="nav-pipeline">Воронка</span>
         <span class="sb-badge" id="sb-pipeline-count">0</span>
       </div>
       <div class="sb-item" onclick="nav('clients')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-        Клиенты
+        <span id="nav-clients">Клиенты</span>
       </div>
       <div class="sb-item" onclick="nav('expenses')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Расходы
+        <span id="nav-expenses">Расходы</span>
       </div>
       <div class="sb-item" onclick="nav('tasks')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        Задачи
+        <span id="nav-tasks">Задачи</span>
         <span class="sb-badge amber" id="sb-tasks-count">0</span>
       </div>
     </div>
@@ -545,6 +545,7 @@ const T = {
     // Misc
     no_projects: 'Нет проектов — добавь первый во вкладке «Воронка»',
     budget_label: 'Смета', connected: '● Подключено к Supabase',
+    subtitle: 'CRM · Общая база команды',
     owner: 'Владелец', add_access: '+ Добавить доступ',
     no_tasks_here: 'Задач нет — добавьте первую',
     priority_high: 'Высокий', priority_medium: 'Средний', priority_low: 'Низкий',
@@ -597,6 +598,7 @@ const T = {
     // Misc
     no_projects: 'Fără proiecte — adaugă primul în secțiunea «Pipeline»',
     budget_label: 'Deviz', connected: '● Conectat la Supabase',
+    subtitle: 'CRM · Baza comună a echipei',
     owner: 'Proprietar', add_access: '+ Adaugă acces',
     no_tasks_here: 'Fără sarcini — adaugați prima',
     priority_high: 'Înalt', priority_medium: 'Mediu', priority_low: 'Scăzut',
@@ -625,9 +627,8 @@ function applyLang() {
   if(passLabel) passLabel.textContent = t('password');
   const loginBtn = document.getElementById('auth-btn');
   if(loginBtn) loginBtn.textContent = t('login_btn');
-  // Sidebar
-  const items = ['dashboard','pipeline','clients','expenses','tasks'];
-  items.forEach(k => {
+  // Sidebar nav
+  ['dashboard','pipeline','clients','expenses','tasks'].forEach(k => {
     const el = document.getElementById('nav-'+k);
     if(el) el.textContent = t(k);
   });
@@ -635,6 +636,24 @@ function applyLang() {
   if(logoutEl) logoutEl.textContent = t('logout');
   const connEl = document.getElementById('nav-connected');
   if(connEl) connEl.textContent = t('connected');
+  const logoSub = document.getElementById('sb-logo-sub');
+  if(logoSub) logoSub.textContent = lang==='ro' ? 'CRM · Baza comună a echipei' : 'CRM · Общая база команды';
+  // Update page title
+  const pageTitleEl = document.getElementById('page-title');
+  if(pageTitleEl) {
+    const pgTitles={dashboard:t('dashboard_title'),pipeline:t('pipeline_title'),clients:t('clients_title'),expenses:t('expenses_title'),tasks:t('tasks_title')};
+    if(pgTitles[currentPage]) pageTitleEl.textContent = pgTitles[currentPage];
+  }
+  const subEl = document.getElementById('sb-subtitle');
+  if(subEl) subEl.textContent = t('subtitle');
+  // Update page title and actions if app is running
+  if(currentUser) {
+    const titles={dashboard:t('dashboard_title'),pipeline:t('pipeline_title'),clients:t('clients_title'),expenses:t('expenses_title'),tasks:t('tasks_title')};
+    const ptEl = document.getElementById('page-title');
+    if(ptEl && currentPage) ptEl.textContent = titles[currentPage]||'';
+    // Re-render current page to update all translated text
+    if(typeof renderPage === 'function') renderPage(currentPage);
+  }
   // Lang buttons
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === lang);
@@ -815,15 +834,16 @@ function nav(page) {
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   ['dashboard','pipeline','clients','expenses','tasks'].forEach((p,i)=>{ if(p===page) document.querySelectorAll('.sb-item')[i].classList.add('active'); });
   currentPage=page;
-  const titles={dashboard:'Дашборд',pipeline:'Воронка продаж',clients:'База клиентов',expenses:'Расходы по проектам',tasks:'Задачи команды'};
+  const titles={dashboard:t('dashboard_title'),pipeline:t('pipeline_title'),clients:t('clients_title'),expenses:t('expenses_title'),tasks:t('tasks_title')};
   document.getElementById('page-title').textContent=titles[page]||page;
   const actions={
-    pipeline:`<button class="btn btn-primary" onclick="openProjectModal()">+ Новый проект</button>`,
-    clients: `<button class="btn btn-primary" onclick="openClientModal()">+ Новый клиент</button>`,
-    expenses:`<button class="btn btn-primary" onclick="openExpenseModal()">+ Новый расход</button>`,
-    tasks:   `<button class="btn btn-primary" onclick="openTaskModal()">+ Новая задача</button>`,
+    pipeline:`<button class="btn btn-primary" onclick="openProjectModal()">${t('new_project')}</button>`,
+    clients: `<button class="btn btn-primary" onclick="openClientModal()">${t('new_client')}</button>`,
+    expenses:`<button class="btn btn-primary" onclick="openExpenseModal()">${t('new_expense')}</button>`,
+    tasks:   `<button class="btn btn-primary" onclick="openTaskModal()">${t('new_task')}</button>`,
   };
   document.getElementById('topbar-actions').innerHTML=actions[page]||'';
+  applyLang();
   renderPage(page);
 }
 
