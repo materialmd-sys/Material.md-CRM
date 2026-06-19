@@ -148,6 +148,13 @@
   .task-priority-high{border-left:3px solid var(--red)}
   .task-priority-medium{border-left:3px solid var(--amber)}
   .task-priority-low{border-left:3px solid var(--border2)}
+  .task-overdue .task-title{color:var(--red)!important}
+  .task-overdue{border-left-color:var(--red)!important;background:var(--red-lt)!important}
+  .task-urgent{border-left-color:var(--amber)!important;background:var(--amber-lt)!important}
+  .deadline-badge{display:inline-block;font-size:10px;font-weight:500;padding:1px 6px;border-radius:99px;margin-left:6px}
+  .dl-overdue{background:var(--red-lt);color:var(--red)}
+  .dl-today{background:#FEF9C3;color:#7A6000}
+  .dl-soon{background:var(--amber-lt);color:var(--amber)}
   .priority-high{color:var(--red);font-weight:600}.priority-medium{color:var(--amber);font-weight:600}
 
   /* DOCUMENTS */
@@ -289,11 +296,20 @@
         <div class="table-wrap"><table><thead><tr><th>Проект</th><th>Статья</th><th>Поставщик</th><th>Тип</th><th>Дата</th><th>Сумма €</th><th>Оплачено</th><th>Документ</th><th></th></tr></thead><tbody id="expenses-tbody"></tbody></table></div>
       </div>
       <div class="panel" id="panel-tasks">
-        <div class="tabs-wrap">
-          <div class="tab-btn active" onclick="setTaskFilter('all',this)">Все</div>
-          <div class="tab-btn" onclick="setTaskFilter('open',this)">Открытые</div>
-          <div class="tab-btn" onclick="setTaskFilter('high',this)">Срочные</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="tabs-wrap" style="margin-bottom:0">
+            <div class="tab-btn active" onclick="setTaskFilter('all',this)">Все</div>
+            <div class="tab-btn" onclick="setTaskFilter('open',this)">Открытые</div>
+            <div class="tab-btn" onclick="setTaskFilter('high',this)">Срочные</div>
+            <div class="tab-btn" onclick="setTaskFilter('report',this)">По сотрудникам</div>
+          </div>
+          <select id="owner-filter" onchange="renderTasks()" style="font-size:13px;padding:6px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);max-width:160px">
+            <option value="">Все сотрудники</option>
+            <option>Денис</option><option>Ирина</option><option>Игорь</option>
+            <option>Оксана</option><option>Ирина М.</option><option>Саша</option>
+          </select>
         </div>
+        <div id="employee-report" style="display:none"></div>
         <div id="tasks-list"></div>
       </div>
     </div>
@@ -349,6 +365,13 @@
         </div>
         <button class="btn btn-green btn-sm mt8" onclick="addAccess()">+ Добавить доступ</button>
         <div id="access-list" style="margin-top:12px"></div>
+      </div>
+
+      <!-- TASKS IN PROJECT -->
+      <div id="project-tasks-section" style="display:none">
+        <div class="modal-section">Задачи проекта</div>
+        <div id="project-tasks-list" style="margin-bottom:10px"></div>
+        <button class="btn btn-sm btn-green" onclick="addTaskFromProject()"><i class="ti ti-plus" aria-hidden="true"></i> Новая задача</button>
       </div>
 
       <!-- DOCUMENTS SECTION -->
@@ -661,7 +684,12 @@ async function loadAll() {
 
 function updateBadges() {
   document.getElementById('sb-pipeline-count').textContent = projects.filter(p=>!['done','lost'].includes(p.status)).length;
-  document.getElementById('sb-tasks-count').textContent = tasks.filter(t=>!t.done).length;
+  const openTasks = tasks.filter(t=>!t.done);
+  const today2 = new Date(); today2.setHours(0,0,0,0);
+  const overdue = openTasks.filter(t=>t.due_date && new Date(t.due_date)<today2).length;
+  const badge = document.getElementById('sb-tasks-count');
+  badge.textContent = overdue > 0 ? overdue+'!' : openTasks.length;
+  badge.style.background = overdue > 0 ? 'var(--red)' : 'var(--amber)';
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
@@ -819,10 +847,15 @@ function renderExpenses() {
 function setTaskFilter(f,el){
   taskFilter=f;
   document.querySelectorAll('#panel-tasks .tab-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active'); renderTasks();
+  el.classList.add('active');
+  document.getElementById('employee-report').style.display = f==='report' ? '' : 'none';
+  document.getElementById('tasks-list').style.display = f==='report' ? 'none' : '';
+  if(f==='report') renderEmployeeReport(); else renderTasks();
 }
 function renderTasks(){
+  const ownerFilter = document.getElementById('owner-filter')?.value||'';
   let ts=[...tasks];
+  if(ownerFilter) ts=ts.filter(t=>t.owner===ownerFilter);
   if(taskFilter==='open') ts=ts.filter(t=>!t.done);
   if(taskFilter==='high') ts=ts.filter(t=>t.priority==='high'&&!t.done);
   ts.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;const o={high:0,medium:1,low:2};return(o[a.priority]||1)-(o[b.priority]||1);});
@@ -830,10 +863,20 @@ function renderTasks(){
   if(!ts.length){list.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div class="empty-text">Задач нет</div></div>`;return;}
   list.innerHTML=ts.map(t=>{
     const p=projects.find(x=>x.id==t.project_id);
-    return `<div class="task-item ${t.done?'done-task':''} task-priority-${t.priority}" onclick="openTaskModal(${t.id})">
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due = t.due_date ? new Date(t.due_date) : null;
+    const diffDays = due ? Math.floor((due-today)/(1000*60*60*24)) : null;
+    const isOverdue = !t.done && due && diffDays < 0;
+    const isToday   = !t.done && due && diffDays === 0;
+    const isSoon    = !t.done && due && diffDays > 0 && diffDays <= 2;
+    const dlBadge   = isOverdue ? `<span class="deadline-badge dl-overdue">просрочено ${Math.abs(diffDays)}д</span>`
+                    : isToday   ? `<span class="deadline-badge dl-today">сегодня</span>`
+                    : isSoon    ? `<span class="deadline-badge dl-soon">через ${diffDays}д</span>` : '';
+    const extraCls  = isOverdue ? 'task-overdue' : isSoon||isToday ? 'task-urgent' : '';
+    return `<div class="task-item ${t.done?'done-task':''} task-priority-${t.priority} ${extraCls}" onclick="openTaskModal(${t.id})">
       <div class="task-check" onclick="event.stopPropagation();toggleTask(${t.id})">${t.done?'<svg width="10" height="10" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':''}</div>
       <div style="flex:1">
-        <div class="task-title">${t.name}</div>
+        <div class="task-title">${t.name}${dlBadge}</div>
         <div class="task-meta">${t.owner||'—'}${p?' · '+p.name:''}${t.due_date?' · до '+fmtD(t.due_date):''} · <span class="priority-${t.priority}">${PRI_L[t.priority]||''}</span></div>
         ${t.description?`<div class="task-meta" style="margin-top:3px">${t.description}</div>`:''}
       </div>
@@ -864,6 +907,7 @@ function openProjectModal(id=null) {
     document.getElementById('p-note').value    = p.note||'';
     renderAccessList(id);
     renderDocList(id);
+    renderProjectTasks(id);
   } else {
     ['p-name','p-client','p-amount','p-budget','p-due','p-note','p-address'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('p-status').value='new';
@@ -883,11 +927,7 @@ async function saveProject() {
   try {
     let pid = editingId;
     if(editingId){await api.update('projects',editingId,data);toast('Проект обновлён');}
-    else{
-      const r=await api.insert('projects',data);
-      pid=r[0]?.id;
-      toast('Проект добавлен');
-    }
+    else{const r=await api.insert('projects',data);pid=r[0]?.id;toast('Проект добавлен');}
     // upload pending files
     for(const f of pendingFiles){
       try{
@@ -895,13 +935,8 @@ async function saveProject() {
         await api.insert('documents',{project_id:pid,name:f.name,file_path:path,file_size:f.size,uploaded_by:currentUser?.email||'—'});
       }catch(e){toast('Ошибка загрузки файла: '+f.name,false);}
     }
-    closeModal('modal-project');
-    await loadAll();
-    renderPage(currentPage);
-  } catch(e){
-    console.error('Save error:', e);
-    toast('Ошибка: '+e.message,false);
-  }
+    closeModal('modal-project'); await loadAll();
+  } catch(e){toast('Ошибка: '+e.message,false);}
 }
 
 async function deleteProject(){
@@ -1053,6 +1088,89 @@ async function toggleTask(id){const t=tasks.find(x=>x.id===id);if(!t)return;try{
 async function deleteTask(){if(!confirm('Удалить?'))return;try{await api.delete('tasks',editingId);toast('Удалена');closeModal('modal-task');await loadAll();}catch(e){toast('Ошибка',false);}}
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
+function renderProjectTasks(pid) {
+  const ptasks = tasks.filter(t=>t.project_id==pid);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const list = document.getElementById('project-tasks-list');
+  if(!ptasks.length){ list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0">Задач нет — добавьте первую</div>'; return; }
+  list.innerHTML = ptasks.map(t=>{
+    const due = t.due_date ? new Date(t.due_date) : null;
+    const diff = due ? Math.floor((due-today)/(1000*60*60*24)) : null;
+    const overdue = !t.done && due && diff < 0;
+    const dlBadge = overdue ? `<span class="deadline-badge dl-overdue">${Math.abs(diff)}д просрочено</span>` : t.due_date ? `<span style="font-size:11px;color:var(--text3)"> · до ${fmtD(t.due_date)}</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px">
+      <div onclick="toggleTask(${t.id})" style="width:14px;height:14px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;${t.done?'background:var(--green);border-color:var(--green)':''}">
+        ${t.done?'<svg width="9" height="9" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':''}
+      </div>
+      <div style="flex:1;${t.done?'text-decoration:line-through;color:var(--text3)':''}">
+        ${t.name}${dlBadge}
+        <span style="font-size:11px;color:var(--text3);margin-left:4px">${t.owner||''}</span>
+      </div>
+      <span class="priority-${t.priority}" style="font-size:11px">${PRI_L[t.priority]}</span>
+    </div>`;
+  }).join('');
+}
+
+function addTaskFromProject() {
+  const pid = editingId;
+  closeModal('modal-project');
+  openTaskModal();
+  setTimeout(()=>{
+    if(pid){ document.getElementById('t-project').value = pid; }
+  }, 100);
+}
+
+function renderEmployeeReport() {
+  const members = ['Денис','Ирина','Игорь','Оксана','Ирина М.','Саша'];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const report = document.getElementById('employee-report');
+  report.innerHTML = members.map(m=>{
+    const mt = tasks.filter(t=>t.owner===m);
+    const total    = mt.length;
+    const done     = mt.filter(t=>t.done).length;
+    const open     = mt.filter(t=>!t.done).length;
+    const overdue  = mt.filter(t=>!t.done&&t.due_date&&new Date(t.due_date)<today).length;
+    const high     = mt.filter(t=>!t.done&&t.priority==='high').length;
+    if(!total) return '';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:14px;font-weight:500;color:var(--text)">${m}</div>
+        ${overdue>0?`<span class="deadline-badge dl-overdue">${overdue} просрочено</span>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="background:var(--bg);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:500;color:var(--text)">${total}</div>
+          <div style="font-size:11px;color:var(--text3)">всего</div>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:500;color:var(--green)">${done}</div>
+          <div style="font-size:11px;color:var(--text3)">выполнено</div>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:500;color:var(--accent)">${open}</div>
+          <div style="font-size:11px;color:var(--text3)">открытых</div>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:500;color:${high>0?'var(--red)':'var(--text3)'}">${high}</div>
+          <div style="font-size:11px;color:var(--text3)">срочных</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        ${mt.filter(t=>!t.done).slice(0,3).map(t=>{
+          const due=t.due_date?new Date(t.due_date):null;
+          const diff=due?Math.floor((due-today)/(1000*60*60*24)):null;
+          const od=due&&diff<0;
+          return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-top:0.5px solid var(--border);font-size:12px;color:${od?'var(--red)':'var(--text2)'}">
+            <i class="ti ti-circle" style="font-size:12px" aria-hidden="true"></i>
+            ${t.name}${t.due_date?` · до ${fmtD(t.due_date)}`:''}
+          </div>`;
+        }).join('')}
+        ${open>3?`<div style="font-size:11px;color:var(--text3);margin-top:4px">+${open-3} ещё</div>`:''}
+      </div>
+    </div>`;
+  }).filter(Boolean).join('') || '<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Нет задач</div></div>';
+}
+
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('open');
