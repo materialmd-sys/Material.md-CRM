@@ -652,37 +652,7 @@ function setAuthTab(tab, el) {
   document.getElementById('auth-btn').textContent = tab==='login' ? 'Войти' : 'Зарегистрироваться';
 }
 
-function doAuth() {
-  const name = document.getElementById('auth-email').value.trim();
-  const pass  = document.getElementById('auth-pass').value;
-  if(!name){ showAuthErr('Введи своё имя'); return; }
-  if(pass !== TEAM_PASSWORD){ showAuthErr('Неверный пароль команды'); return; }
-  currentUser = { email: name, name };
-  localStorage.setItem('sb_session', JSON.stringify({ user: currentUser }));
-  startApp();
-}
 
-function showAuthErr(msg, info=false) {
-  const el = document.getElementById('auth-err');
-  el.textContent = msg; el.style.display='block';
-  el.style.background = info ? 'var(--accent-lt)' : 'var(--red-lt)';
-  el.style.color = info ? 'var(--accent)' : 'var(--red)';
-}
-
-function doLogout() {
-  localStorage.removeItem('sb_session');
-  currentUser=null;
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
-}
-
-function startApp() {
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('sb-user-email').textContent = currentUser?.name || currentUser?.email || '—';
-  // defer loadAll so api object is initialized first
-  applyLang(); setTimeout(loadAll, 0);
-}
 
 // Simple team login
 const TEAM_PASSWORD = 'material2025';
