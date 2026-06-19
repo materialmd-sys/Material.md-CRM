@@ -891,6 +891,7 @@ function openProjectModal(id=null) {
   document.getElementById('btn-delete-project').style.display = id?'':'none';
   document.getElementById('access-section').style.display = id?'':'none';
   document.getElementById('docs-section').style.display = id?'':'none';
+  document.getElementById('project-tasks-section').style.display = id?'':'none';
   if(id) {
     const p=projects.find(x=>x.id===id);
     document.getElementById('p-name').value    = p.name||'';
