@@ -652,7 +652,7 @@ function setAuthTab(tab, el) {
   document.getElementById('auth-btn').textContent = tab==='login' ? 'Войти' : 'Зарегистрироваться';
 }
 
-async function doAuth() {
+function doAuth() {
   const name = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   if(!name){ showAuthErr('Введи своё имя'); return; }
