@@ -681,7 +681,7 @@ function startApp() {
   document.getElementById('app').style.display='flex';
   document.getElementById('sb-user-email').textContent = currentUser?.name || currentUser?.email || '—';
   // defer loadAll so api object is initialized first
-  setTimeout(loadAll, 0);
+  applyLang(); setTimeout(loadAll, 0);
 }
 
 // Simple team login
