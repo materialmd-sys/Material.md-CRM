@@ -774,9 +774,9 @@ function renderKanban() {
         const bcls=bpct>=100?'over':bpct>=75?'warn':'';
         return `<div class="kanban-card" 
             draggable="true"
-            ondragstart="dragStart(event,${p.id})"
+            ondragstart="dragStart(event,${p.id},event)"
             ondragend="dragEnd(event)"
-            onclick="openProjectModal(${p.id})">
+            onclick="cardClick(event,${p.id})">
           <div class="kc-name">${p.name}</div>
           <div class="kc-client">${p.client||''}</div>
           <div class="kc-meta">${dirTag(p.dir)}<span class="kc-amount">${p.amount?fmt(p.amount)+' €':''}</span></div>
@@ -1184,9 +1184,17 @@ function renderEmployeeReport() {
 
 let draggedId = null;
 
+let dragStartX = 0, dragStartY = 0;
 function dragStart(e, id) {
   draggedId = id;
-  setTimeout(()=>e.target.classList.add('dragging'), 0);
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  setTimeout(()=>{ if(e.target) e.target.classList.add('dragging'); }, 0);
+}
+function cardClick(e, id) {
+  const dx = Math.abs(e.clientX - dragStartX);
+  const dy = Math.abs(e.clientY - dragStartY);
+  if(dx < 5 && dy < 5) openProjectModal(id);
 }
 function dragEnd(e) {
   e.target.classList.remove('dragging');
@@ -1203,16 +1211,20 @@ function dragLeave(e, col) {
 }
 async function dropCard(e, newStatus) {
   e.preventDefault();
+  e.stopPropagation();
   document.querySelectorAll('.kanban-col').forEach(c=>c.classList.remove('drag-over'));
-  if(!draggedId) return;
+  const id = draggedId;
+  draggedId = null;
+  if(!id) return;
+  const proj = projects.find(p=>p.id===id);
+  if(proj && proj.status === newStatus) return;
   try {
-    await api.update('projects', draggedId, {status: newStatus});
-    toast('Статус обновлён');
+    await api.update('projects', id, {status: newStatus});
+    toast('Статус обновлён → ' + (ST_L[newStatus]||newStatus));
     await loadAll();
   } catch(err) {
     toast('Ошибка: '+err.message, false);
   }
-  draggedId = null;
 }
 
 function toggleSidebar() {
