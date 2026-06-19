@@ -732,13 +732,13 @@ let editingId=null, currentPage='dashboard', taskFilter='all';
 let pendingFiles=[], pendingExpFile=null;
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-const DIR_L()   = () => ({floor:t('d_floor'),ceil:t('d_ceil'),facade:t('d_facade')});
+const DIR_L = () => ({floor:t('d_floor'),ceil:t('d_ceil'),facade:t('d_facade')});
 const DIR_TAG = {floor:'tag-floor',ceil:'tag-ceil',facade:'tag-facade'};
-const ST_L()    = () => ({new:t('s_new'),qual:t('s_qual'),kp:t('s_kp'),neg:t('s_neg'),work:t('s_work'),done:t('s_done'),lost:t('s_lost')});
+const ST_L = () => ({new:t('s_new'),qual:t('s_qual'),kp:t('s_kp'),neg:t('s_neg'),work:t('s_work'),done:t('s_done'),lost:t('s_lost')});
 const ST_CSS  = {new:'s-new',qual:'s-qual',kp:'s-kp',neg:'s-neg',work:'s-work',done:'s-done',lost:'s-lost'};
 const EXP_L   = {mat:'Материалы',mont:'Монтаж',log:'Логистика',other:'Прочее'};
 const EXP_CSS = {mat:'tag-floor',mont:'tag-ceil',log:'tag-facade',other:'tag-priv'};
-const PRI_L()   = () => ({high:t('priority_high'),medium:t('priority_medium'),low:t('priority_low')});
+const PRI_L = () => ({high:t('priority_high'),medium:t('priority_medium'),low:t('priority_low')});
 const CT_CSS  = {Архитектор:'tag-arch',Дизайнер:'tag-design',Застройщик:'tag-dev',Частник:'tag-priv',Прочее:'tag-priv'};
 
 const fmt   = n => Number(n||0).toLocaleString('ru-RU');
