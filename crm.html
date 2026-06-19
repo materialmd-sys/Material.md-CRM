@@ -555,7 +555,7 @@ async function sbReq(method, path, body=null) {
       'apikey': SB_KEY,
       'Authorization': `Bearer ${SB_KEY}`,
       'Content-Type':'application/json',
-      'Prefer':'return=representation'
+      ''Prefer':'return=representation'':'return=representation'
     },
     body: body ? JSON.stringify(body) : null
   });
