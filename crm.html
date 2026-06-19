@@ -653,25 +653,13 @@ function setAuthTab(tab, el) {
 }
 
 async function doAuth() {
-  const email = document.getElementById('auth-email').value.trim();
+  const name = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
-  if(!email||!pass){ showAuthErr('Заполни email и пароль'); return; }
-  const endpoint = authTab==='login' ? 'token?grant_type=password' : 'signup';
-  try {
-    const r = await fetch(`${SB_URL}/auth/v1/${endpoint}`, {
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
-      body: JSON.stringify({email, password:pass})
-    });
-    const d = await r.json();
-    if(d.error || d.error_description) { showAuthErr(d.error_description||d.error); return; }
-    if(authTab==='signup' && !d.access_token) {
-      showAuthErr('Письмо подтверждения отправлено на '+email+'. Подтверди и войди.', true); return;
-    }
-    currentUser = d.user || d;
-    localStorage.setItem('sb_session', JSON.stringify({access_token:d.access_token, user:d.user||d}));
-    startApp();
-  } catch(e){ showAuthErr('Ошибка подключения'); }
+  if(!name){ showAuthErr('Введи своё имя'); return; }
+  if(pass !== TEAM_PASSWORD){ showAuthErr('Неверный пароль команды'); return; }
+  currentUser = { email: name, name };
+  localStorage.setItem('sb_session', JSON.stringify({ user: currentUser }));
+  startApp();
 }
 
 function showAuthErr(msg, info=false) {
