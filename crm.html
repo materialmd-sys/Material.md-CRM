@@ -458,7 +458,7 @@
 
 <script>
 const SB_URL = 'https://hqqwpfxdfkmlbnfimhrm.supabase.co';
-const eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxcXdwZnhkZmttbGJuZmltaHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDM5MjIsImV4cCI6MjA5NzI3OTkyMn0.jxAwAwipsfJNbntSHPAjPngDnqpS8YokyeGRtqNXorM= 'sb_publishable_J3H3SO6Z39dquwUNEydbZQ_jDYZQxfa';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxcXdwZnhkZmttbGJuZmltaHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDM5MjIsImV4cCI6MjA5NzI3OTkyMn0.jxAwAwipsfJNbntSHPAjPngDnqpS8YokyeGRtqNXorM';
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 let currentUser = null;
@@ -555,7 +555,7 @@ async function sbReq(method, path, body=null) {
       'apikey': SB_KEY,
       'Authorization': `Bearer ${SB_KEY}`,
       'Content-Type':'application/json',
-      ''Prefer':'return=representation'':'return=representation'
+      'Prefer':'return=representation'
     },
     body: body ? JSON.stringify(body) : null
   });
@@ -883,7 +883,11 @@ async function saveProject() {
   try {
     let pid = editingId;
     if(editingId){await api.update('projects',editingId,data);toast('Проект обновлён');}
-    else{const r=await api.insert('projects',data);pid=r[0]?.id;toast('Проект добавлен');}
+    else{
+      const r=await api.insert('projects',data);
+      pid=r[0]?.id;
+      toast('Проект добавлен');
+    }
     // upload pending files
     for(const f of pendingFiles){
       try{
@@ -891,8 +895,13 @@ async function saveProject() {
         await api.insert('documents',{project_id:pid,name:f.name,file_path:path,file_size:f.size,uploaded_by:currentUser?.email||'—'});
       }catch(e){toast('Ошибка загрузки файла: '+f.name,false);}
     }
-    closeModal('modal-project'); await loadAll();
-  } catch(e){toast('Ошибка: '+e.message,false);}
+    closeModal('modal-project');
+    await loadAll();
+    renderPage(currentPage);
+  } catch(e){
+    console.error('Save error:', e);
+    toast('Ошибка: '+e.message,false);
+  }
 }
 
 async function deleteProject(){
