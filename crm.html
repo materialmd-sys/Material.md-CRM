@@ -80,6 +80,8 @@
   .kanban-col-count{font-size:11px;background:var(--border);color:var(--text2);padding:1px 7px;border-radius:99px}
   .kanban-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:box-shadow .12s,border-color .12s}
   .kanban-card:hover{box-shadow:var(--shadow);border-color:var(--border2)}
+  .kanban-card.dragging{opacity:.4;transform:scale(.97)}
+  .kanban-col.drag-over{background:var(--accent-lt);border-color:var(--accent);border-style:dashed}
   .kc-name{font-size:13px;font-weight:500;margin-bottom:4px}
   .kc-client{font-size:11px;color:var(--text3);margin-bottom:5px}
   .kc-meta{display:flex;align-items:center;justify-content:space-between}
@@ -760,13 +762,21 @@ function renderKanban() {
   const stages=['new','qual','kp','neg','work','done','lost'];
   document.getElementById('kanban-board').innerHTML = stages.map(s=>{
     const cards=projects.filter(p=>p.status===s);
-    return `<div class="kanban-col">
+    return `<div class="kanban-col"
+      ondragover="dragOver(event)"
+      ondragenter="dragEnter(event,this)"
+      ondragleave="dragLeave(event,this)"
+      ondrop="dropCard(event,'${s}')">
       <div class="kanban-col-header"><span class="kanban-col-title">${ST_L[s]}</span><span class="kanban-col-count">${cards.length}</span></div>
       ${cards.map(p=>{
         const exp=projExp(p.id);
         const bpct=p.budget?Math.min(150,exp/p.budget*100):0;
         const bcls=bpct>=100?'over':bpct>=75?'warn':'';
-        return `<div class="kanban-card" onclick="openProjectModal(${p.id})">
+        return `<div class="kanban-card" 
+            draggable="true"
+            ondragstart="dragStart(event,${p.id})"
+            ondragend="dragEnd(event)"
+            onclick="openProjectModal(${p.id})">
           <div class="kc-name">${p.name}</div>
           <div class="kc-client">${p.client||''}</div>
           <div class="kc-meta">${dirTag(p.dir)}<span class="kc-amount">${p.amount?fmt(p.amount)+' €':''}</span></div>
@@ -1170,6 +1180,39 @@ function renderEmployeeReport() {
       </div>
     </div>`;
   }).filter(Boolean).join('') || '<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">Нет задач</div></div>';
+}
+
+let draggedId = null;
+
+function dragStart(e, id) {
+  draggedId = id;
+  setTimeout(()=>e.target.classList.add('dragging'), 0);
+}
+function dragEnd(e) {
+  e.target.classList.remove('dragging');
+}
+function dragOver(e) {
+  e.preventDefault();
+}
+function dragEnter(e, col) {
+  e.preventDefault();
+  col.classList.add('drag-over');
+}
+function dragLeave(e, col) {
+  if(!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+}
+async function dropCard(e, newStatus) {
+  e.preventDefault();
+  document.querySelectorAll('.kanban-col').forEach(c=>c.classList.remove('drag-over'));
+  if(!draggedId) return;
+  try {
+    await api.update('projects', draggedId, {status: newStatus});
+    toast('Статус обновлён');
+    await loadAll();
+  } catch(err) {
+    toast('Ошибка: '+err.message, false);
+  }
+  draggedId = null;
 }
 
 function toggleSidebar() {
